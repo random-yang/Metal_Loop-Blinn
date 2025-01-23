@@ -47,13 +47,19 @@ extension MetalView {
             var position: SIMD3<Float>
             var uv: SIMD2<Float>
             var sign: Float
+            var color: SIMD4<Float>
         }
         
         // Example quadratic bezier control points (convex curve)
         let vertices: [Vertex] = [
-            Vertex(position: [-0.5, 0, 0], uv: [0, 0], sign: 1),
-            Vertex(position: [1, 0, 0], uv: [0.5, 0], sign: 1),
-            Vertex(position: [0.5, 1, 0], uv: [1, 1], sign: 1)
+            // inner
+            Vertex(position: [-0.5, 0.25, 0], uv: [0, 0], sign: 1.0, color: [1, 0, 0, 1]),
+            Vertex(position: [0, 0.5, 0], uv: [0.5, 0], sign: 1.0, color: [1, 0, 0, 1]),
+            Vertex(position: [0.5, 0.25, 0], uv: [1, 1], sign: 1.0, color: [1, 0, 0, 1]),
+            // outer
+            Vertex(position: [-0.5, -0.25, 0], uv: [0, 0], sign: -1, color: [0, 1, 0, 1]),
+            Vertex(position: [0, 0, 0], uv: [0.5, 0], sign: -1, color: [0, 1, 0, 1]),
+            Vertex(position: [0.5, -0.25, 0], uv: [1, 1], sign: -1, color: [0, 1, 0, 1])
         ]
         
         init(_ parent: MetalView) {
@@ -93,7 +99,18 @@ extension MetalView {
             vertexDescriptor.attributes[2].offset = MemoryLayout<SIMD3<Float>>.stride + MemoryLayout<SIMD2<Float>>.stride
             vertexDescriptor.attributes[2].bufferIndex = 0
             
+            vertexDescriptor.attributes[3].format = .float4
+            vertexDescriptor.attributes[3].offset = 32 // MemoryLayout<SIMD3<Float>>.stride + MemoryLayout<SIMD2<Float>>.stride + MemoryLayout<Float>.stride
+            vertexDescriptor.attributes[3].bufferIndex = 0
+            
             vertexDescriptor.layouts[0].stride = MemoryLayout<Vertex>.stride
+            
+            print("Position offset: \(vertexDescriptor.attributes[0].offset)")
+            print("UV offset: \(vertexDescriptor.attributes[1].offset)")
+            print("Sign offset: \(vertexDescriptor.attributes[2].offset)")
+            print("Color offset: \(vertexDescriptor.attributes[3].offset)")
+            print(MemoryLayout<Vertex>.stride)
+            
             pipelineDescriptor.vertexDescriptor = vertexDescriptor
             
             // 4. Create pipeline state
@@ -139,7 +156,7 @@ extension MetalView {
             let aspectRatio = viewportSize.width / viewportSize.height
             var viewport = MTLViewport()
             
-            if aspectRatio > 1 {
+           if aspectRatio > 1 {
                 // Width greater than height
                 let width = viewportSize.height
                 let x = (viewportSize.width - width) / 2
@@ -162,7 +179,7 @@ extension MetalView {
             renderEncoder.setVertexBuffer(transformBuffer, offset: 0, index: 1)
             
             // Draw triangles
-            renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+            renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: vertices.count)
             renderEncoder.endEncoding()
             
             commandBuffer.present(drawable)
@@ -227,7 +244,7 @@ struct ContentView: View {
                 .font(.title)
             // MARK: Metal View
             MetalView(transformMatrix: transformMatrix)
-                // MARK: Drag Gesture
+            // MARK: Drag Gesture
                 .gesture(
                     DragGesture()
                         .onChanged { value in
@@ -244,7 +261,7 @@ struct ContentView: View {
                             self.lastOffset = self.offset
                         }
                 )
-                // MARK: Scale Gesture
+            // MARK: Scale Gesture
                 .gesture(
                     MagnificationGesture()
                         .onChanged { value in
@@ -261,11 +278,14 @@ struct ContentView: View {
                 )
                 .overlay(
                     Image(systemName: "hand.draw")
-                        .font(.system(size: 24))
+                        .font(.system(size: 20))
+                        .foregroundStyle(.secondary)
                         .padding(),
-                    alignment: .topTrailing
+                    alignment: .bottomTrailing
                 )
-            
+                .frame(width: 300, height: 600)
+                .border(.secondary, width: 1)
+                .padding()
             // MARK: Status Display
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
