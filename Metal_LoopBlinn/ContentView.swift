@@ -86,30 +86,32 @@ extension MetalView {
             pipelineDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
             
             // 3. Configure vertex descriptor
+            // Manual offset calculation due to memory alignment
             let vertexDescriptor = MTLVertexDescriptor()
             vertexDescriptor.attributes[0].format = .float3
             vertexDescriptor.attributes[0].offset = 0
             vertexDescriptor.attributes[0].bufferIndex = 0
             
             vertexDescriptor.attributes[1].format = .float2
-            vertexDescriptor.attributes[1].offset = MemoryLayout<SIMD3<Float>>.stride
+            vertexDescriptor.attributes[1].offset = 16 //MemoryLayout<SIMD3<Float>>.stride
             vertexDescriptor.attributes[1].bufferIndex = 0
             
             vertexDescriptor.attributes[2].format = .float
-            vertexDescriptor.attributes[2].offset = MemoryLayout<SIMD3<Float>>.stride + MemoryLayout<SIMD2<Float>>.stride
+            vertexDescriptor.attributes[2].offset = 24 // MemoryLayout<SIMD3<Float>>.stride + MemoryLayout<SIMD2<Float>>.stride
             vertexDescriptor.attributes[2].bufferIndex = 0
             
             vertexDescriptor.attributes[3].format = .float4
             vertexDescriptor.attributes[3].offset = 32 // MemoryLayout<SIMD3<Float>>.stride + MemoryLayout<SIMD2<Float>>.stride + MemoryLayout<Float>.stride
             vertexDescriptor.attributes[3].bufferIndex = 0
             
-            vertexDescriptor.layouts[0].stride = MemoryLayout<Vertex>.stride
+            vertexDescriptor.layouts[0].stride = 48 // MemoryLayout<Vertex>.stride
             
-            print("Position offset: \(vertexDescriptor.attributes[0].offset)")
-            print("UV offset: \(vertexDescriptor.attributes[1].offset)")
-            print("Sign offset: \(vertexDescriptor.attributes[2].offset)")
-            print("Color offset: \(vertexDescriptor.attributes[3].offset)")
-            print(MemoryLayout<Vertex>.stride)
+            // for debug
+//            print("Position offset: \(vertexDescriptor.attributes[0].offset)")
+//            print("UV offset: \(vertexDescriptor.attributes[1].offset)")
+//            print("Sign offset: \(vertexDescriptor.attributes[2].offset)")
+//            print("Color offset: \(vertexDescriptor.attributes[3].offset)")
+//            print(MemoryLayout<Vertex>.stride)
             
             pipelineDescriptor.vertexDescriptor = vertexDescriptor
             
@@ -240,8 +242,8 @@ struct ContentView: View {
     let dragSensitivity: CGFloat = 0.005
     var body: some View {
         VStack {
-            Text("Metal LoopBlinn")
-                .font(.title)
+            Text("Metal Loop-Blinn")
+                .font(.title3)
             // MARK: Metal View
             MetalView(transformMatrix: transformMatrix)
             // MARK: Drag Gesture
@@ -283,9 +285,8 @@ struct ContentView: View {
                         .padding(),
                     alignment: .bottomTrailing
                 )
-                .frame(width: 300, height: 600)
                 .border(.secondary, width: 1)
-                .padding()
+                .padding(.horizontal)
             // MARK: Status Display
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
