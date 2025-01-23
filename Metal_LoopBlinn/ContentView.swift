@@ -85,6 +85,16 @@ extension MetalView {
             pipelineDescriptor.fragmentFunction = fragmentFunction
             pipelineDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
             
+            // 添加混合模式配置
+            let colorAttachment = pipelineDescriptor.colorAttachments[0]!
+            colorAttachment.isBlendingEnabled = true
+            colorAttachment.rgbBlendOperation = .add
+            colorAttachment.alphaBlendOperation = .add
+            colorAttachment.sourceRGBBlendFactor = .sourceAlpha
+            colorAttachment.sourceAlphaBlendFactor = .sourceAlpha
+            colorAttachment.destinationRGBBlendFactor = .oneMinusSourceAlpha
+            colorAttachment.destinationAlphaBlendFactor = .oneMinusSourceAlpha
+            
             // 3. Configure vertex descriptor
             // Manual offset calculation due to memory alignment
             let vertexDescriptor = MTLVertexDescriptor()
@@ -270,7 +280,7 @@ struct ContentView: View {
                             // todo: dynamic scale center
                             self.scaleAnchor = CGPoint(
                                 x: 0,
-                                y: 0
+                                y: 0.5
                             )
                             self.scale = self.lastScale * value
                         }

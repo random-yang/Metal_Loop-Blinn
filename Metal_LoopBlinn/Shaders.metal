@@ -43,20 +43,20 @@ fragment float4 fragmentShader_Quadratic(VertexOut in [[stage_in]]) {
     float f = u * u - v;
     
     // Calculate gradient
-     float2 duv = float2(dfdx(u), dfdy(v));
-     float gradient = length(duv);
+    float2 duv = float2(dfdx(u), dfdy(v));
+    float gradient = length(duv);
     
     // Calculate signed distance
-     float distance = f / gradient;
-    
-    // Anti-aliasing smoothing
-    // FIXME: anti-aliasing does not work
-    // float alpha = smoothstep(0.5, -0.5, f);
+    float distance = f / gradient;
     
     // Discard outside pixels
     if (distance * in.sign >= 0.0) {
-        discard_fragment();
+//        discard_fragment();
+        return float4(in.color.rgb, 0.1); // for viz
     }
     
-    return float4(in.color.rgb, 1.0);
+    // Anti-aliasing smoothing
+    float alpha = smoothstep(0, -1 * in.sign, distance);
+    
+    return float4(in.color.rgb, alpha);
 }
