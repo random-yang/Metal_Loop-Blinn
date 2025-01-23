@@ -12,6 +12,7 @@ struct Metal_LoopBlinnApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .preferredColorScheme(.dark)
         }
     }
 }

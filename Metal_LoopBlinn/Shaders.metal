@@ -52,7 +52,7 @@ fragment float4 fragmentShader_Quadratic(VertexOut in [[stage_in]]) {
     // Discard outside pixels
     if (distance * in.sign >= 0.0) {
 //        discard_fragment();
-        return float4(in.color.rgb, 0.1); // for viz
+        return float4(in.color.rgb, 0.3); // for viz
     }
     
     // Anti-aliasing smoothing

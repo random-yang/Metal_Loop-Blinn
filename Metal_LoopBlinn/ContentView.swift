@@ -11,12 +11,13 @@ import MetalKit
 // MARK: - Metal Render View
 struct MetalView: UIViewRepresentable {
     var transformMatrix: matrix_float4x4 // Transform matrix
+    var vertices: [Vertex] // 新增vertices参数
     
     func makeUIView(context: Context) -> MTKView {
         let mtkView = MTKView()
         mtkView.device = context.coordinator.device
         mtkView.delegate = context.coordinator
-        mtkView.clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
+        mtkView.clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
         mtkView.enableSetNeedsDisplay = true
         mtkView.isOpaque = false
         return mtkView
@@ -28,8 +29,16 @@ struct MetalView: UIViewRepresentable {
     }
     
     func makeCoordinator() -> Coordinator {
-        Coordinator(self)
+        Coordinator(self, vertices: vertices) // 传入vertices
     }
+}
+
+// Vertex data structure
+struct Vertex {
+    var position: SIMD3<Float>
+    var uv: SIMD2<Float>
+    var sign: Float
+    var color: SIMD4<Float>
 }
 
 // MARK: - Metal Coordinator
@@ -41,29 +50,10 @@ extension MetalView {
         var pipelineState: MTLRenderPipelineState!
         var vertexBuffer: MTLBuffer!
         var transformBuffer: MTLBuffer!
-        
-        // Vertex data structure
-        struct Vertex {
-            var position: SIMD3<Float>
-            var uv: SIMD2<Float>
-            var sign: Float
-            var color: SIMD4<Float>
-        }
-        
-        // Example quadratic bezier control points (convex curve)
-        let vertices: [Vertex] = [
-            // inner
-            Vertex(position: [-0.5, 0.25, 0], uv: [0, 0], sign: 1.0, color: [1, 0, 0, 1]),
-            Vertex(position: [0, 0.5, 0], uv: [0.5, 0], sign: 1.0, color: [1, 0, 0, 1]),
-            Vertex(position: [0.5, 0.25, 0], uv: [1, 1], sign: 1.0, color: [1, 0, 0, 1]),
-            // outer
-            Vertex(position: [-0.5, -0.25, 0], uv: [0, 0], sign: -1, color: [0, 1, 0, 1]),
-            Vertex(position: [0, 0, 0], uv: [0.5, 0], sign: -1, color: [0, 1, 0, 1]),
-            Vertex(position: [0.5, -0.25, 0], uv: [1, 1], sign: -1, color: [0, 1, 0, 1])
-        ]
-        
-        init(_ parent: MetalView) {
+        var vertices: [Vertex]
+        init(_ parent: MetalView, vertices: [Vertex]) {
             self.parent = parent
+            self.vertices = vertices // 保存vertices
             super.init()
             initializeMetal()
         }
@@ -132,7 +122,7 @@ extension MetalView {
                 fatalError("Failed to create pipeline state: \(error)")
             }
             
-            // 5. Create vertex buffer
+            // 5. Create vertex buffer - 使用传入的vertices
             vertexBuffer = device.makeBuffer(
                 bytes: vertices,
                 length: MemoryLayout<Vertex>.stride * vertices.count,
@@ -250,53 +240,29 @@ struct ContentView: View {
 
     let scaleSensitivity: CGFloat = 0.005
     let dragSensitivity: CGFloat = 0.005
+    
+    let vertices: [Vertex] = [
+        // inner
+        Vertex(position: [-0.5, -0.25, 0], uv: [0, 0], sign: 1, color: [1, 0, 0, 1]),
+        Vertex(position: [0, 0, 0], uv: [0.5, 0], sign: 1, color: [1, 0, 0, 1]),
+        Vertex(position: [0.5, -0.25, 0], uv: [1, 1], sign: 1, color: [1, 0, 0, 1])
+    ]
+    
+    let vertices2: [Vertex] = [
+        // outer
+        Vertex(position: [-0.5, -0.25, 0], uv: [0, 0], sign: -1, color: [0, 1, 0, 1]),
+        Vertex(position: [0, 0, 0], uv: [0.5, 0], sign: -1, color: [0, 1, 0, 1]),
+        Vertex(position: [0.5, -0.25, 0], uv: [1, 1], sign: -1, color: [0, 1, 0, 1])
+    ]
+    
     var body: some View {
-        VStack {
+        VStack(spacing: 0) {
             Text("Metal Loop-Blinn")
                 .font(.title3)
+                .padding()
             // MARK: Metal View
-            MetalView(transformMatrix: transformMatrix)
-            // MARK: Drag Gesture
-                .gesture(
-                    DragGesture()
-                        .onChanged { value in
-                            self.offset = CGSize(
-                                width: self.lastOffset.width + value.translation.width * dragSensitivity,
-                                height: self.lastOffset.height + value.translation.height * dragSensitivity
-                            )
-                        }
-                        .onEnded { value in
-                            self.offset = CGSize(
-                                width: self.lastOffset.width + value.translation.width * dragSensitivity,
-                                height: self.lastOffset.height + value.translation.height * dragSensitivity
-                            )
-                            self.lastOffset = self.offset
-                        }
-                )
-            // MARK: Scale Gesture
-                .gesture(
-                    MagnificationGesture()
-                        .onChanged { value in
-                            // todo: dynamic scale center
-                            self.scaleAnchor = CGPoint(
-                                x: 0,
-                                y: 0.5
-                            )
-                            self.scale = self.lastScale * value
-                        }
-                        .onEnded { value in
-                            self.lastScale = self.scale
-                        }
-                )
-                .overlay(
-                    Image(systemName: "hand.draw")
-                        .font(.system(size: 20))
-                        .foregroundStyle(.secondary)
-                        .padding(),
-                    alignment: .bottomTrailing
-                )
-                .border(.secondary, width: 1)
-                .padding(.horizontal)
+            MetalView(transformMatrix: transformMatrix, vertices: vertices)
+            MetalView(transformMatrix: transformMatrix, vertices: vertices2)
             // MARK: Status Display
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
@@ -320,6 +286,45 @@ struct ContentView: View {
             }
             .padding()
         }
+        // MARK: Drag Gesture
+        .gesture(
+            DragGesture()
+                .onChanged { value in
+                    self.offset = CGSize(
+                        width: self.lastOffset.width + value.translation.width * dragSensitivity,
+                        height: self.lastOffset.height + value.translation.height * dragSensitivity
+                    )
+                }
+                .onEnded { value in
+                    self.offset = CGSize(
+                        width: self.lastOffset.width + value.translation.width * dragSensitivity,
+                        height: self.lastOffset.height + value.translation.height * dragSensitivity
+                    )
+                    self.lastOffset = self.offset
+                }
+        )
+        // MARK: Scale Gesture
+        .gesture(
+            MagnificationGesture()
+                .onChanged { value in
+                    // todo: dynamic scale center
+                    self.scaleAnchor = CGPoint(
+                        x: 0,
+                        y: 0
+                    )
+                    self.scale = self.lastScale * value
+                }
+                .onEnded { value in
+                    self.lastScale = self.scale
+                }
+        )
+        .overlay(
+            Image(systemName: "hand.draw")
+                .font(.system(size: 20))
+                .foregroundStyle(.secondary)
+                .padding(),
+            alignment: .bottomTrailing
+        )
     }
 }
 
